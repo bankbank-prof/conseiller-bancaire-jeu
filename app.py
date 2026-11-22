@@ -7,11 +7,11 @@ import streamlit as st
 
 
 st.set_page_config(
-    page_title="Oak & Ledger — Conseil patrimonial",
+    page_title="Oak & Ledger",
     layout="wide",
 )
 
-KEY = "oak_ledger_v1"
+KEY = "oak_ledger_complet_v2"
 
 SUPPORTS = {
     "Obligations diversifiées": (0.03, 0.05, 3),
@@ -29,82 +29,23 @@ TRANCHES = [
     (float("inf"), 0.45),
 ]
 
-CSS = """
-<style>
-.stApp {
-    background: #f4f0e6;
-    color: #24372d;
-}
-h1, h2, h3 {
-    font-family: Georgia, 'Times New Roman', serif !important;
-    color: #203e30 !important;
-}
-[data-testid="stSidebar"] {
-    background: #e4e5d8;
-    border-right: 3px solid #aa8b55;
-}
-.stButton > button {
-    background: #244533;
-    color: #fff9e9;
-    border: 1px solid #ad925e;
-    border-radius: 4px;
-}
-.stButton > button:hover {
-    background: #623c42;
-    color: white;
-    border-color: #ad925e;
-}
-[data-testid="stMetric"] {
-    background: #fffcf3;
-    padding: 14px;
-    border-top: 3px solid #a68a53;
-    border-radius: 4px;
-}
-.banner {
-    padding: 24px;
-    border: 1px solid #ac915b;
-    color: #fff9e8;
-    background-color: #213e30;
-    background-image:
-        repeating-linear-gradient(
-            90deg,
-            transparent 0px,
-            transparent 37px,
-            #a88a4d33 38px,
-            #a88a4d33 40px
-        ),
-        repeating-linear-gradient(
-            0deg,
-            transparent 0px,
-            transparent 37px,
-            #6c394344 38px,
-            #6c394344 41px
-        );
-    margin-bottom: 22px;
-}
-.banner-title {
-    font: 32px Georgia, serif;
-    letter-spacing: 2px;
-}
-.banner-sub {
-    font: 14px Georgia, serif;
-    margin-top: 8px;
-    color: #eee2c8;
-}
-</style>
-"""
 
-st.markdown(CSS, unsafe_allow_html=True)
-
-
-def euro(x):
+def euros(x):
     return (
-        f"{x:,.2f}".replace(",", " ").replace(".", ",")
+        format(x, ",.2f")
+        .replace(",", " ")
+        .replace(".", ",")
         + " €"
     )
 
 
-def personne(nom, age, revenu, statut="Salaire", retraite=64):
+def personne(
+    nom,
+    age,
+    revenu,
+    statut="Salaire",
+    retraite=64,
+):
     return {
         "nom": nom,
         "age": age,
@@ -129,14 +70,9 @@ PROFILS = {
         "livret": 2200.0,
         "maison": 0.0,
         "voiture": False,
-        "reserve": 3,
-        "risque": 5,
-        "objectif": (
-            "Préparer un apport et finir le crédit étudiant."
-        ),
         "positions": [],
     },
-    "Léa — Construction patrimoniale": {
+    "Léa — Construire son patrimoine": {
         "personnes": [
             personne("Léa", 32, 2600.0),
         ],
@@ -149,11 +85,6 @@ PROFILS = {
         "livret": 7802.50,
         "maison": 0.0,
         "voiture": False,
-        "reserve": 3,
-        "risque": 5,
-        "objectif": (
-            "Conserver une réserve et diversifier le patrimoine."
-        ),
         "positions": [],
     },
     "Sarah et Mehdi — Famille": {
@@ -170,11 +101,6 @@ PROFILS = {
         "livret": 10000.0,
         "maison": 250000.0,
         "voiture": True,
-        "reserve": 4,
-        "risque": 5,
-        "objectif": (
-            "Protéger la famille et préparer les dépenses des enfants."
-        ),
         "positions": [
             ("CTO", "Actions monde", 5000.0),
         ],
@@ -185,7 +111,7 @@ PROFILS = {
                 "Thomas",
                 46,
                 3400.0,
-                statut="Bénéfice réel",
+                "Bénéfice réel",
             ),
         ],
         "enfants": [],
@@ -197,17 +123,12 @@ PROFILS = {
         "livret": 9000.0,
         "maison": 0.0,
         "voiture": True,
-        "reserve": 6,
-        "risque": 5,
-        "objectif": (
-            "Sécuriser les revenus irréguliers et préparer la retraite."
-        ),
         "positions": [
             ("CTO", "Actions monde", 10000.0),
             ("CTO", "Obligations diversifiées", 5000.0),
         ],
     },
-    "Sylvie — Transition retraite": {
+    "Sylvie — Préparer sa retraite": {
         "personnes": [
             personne(
                 "Sylvie",
@@ -225,11 +146,6 @@ PROFILS = {
         "livret": 18000.0,
         "maison": 220000.0,
         "voiture": True,
-        "reserve": 6,
-        "risque": 4,
-        "objectif": (
-            "Anticiper la retraite et maîtriser les retraits."
-        ),
         "positions": [
             ("CTO", "Actions monde", 25000.0),
             ("CTO", "Obligations diversifiées", 35000.0),
@@ -238,85 +154,126 @@ PROFILS = {
 }
 
 
-def places(s, env=None):
+def placements(s, enveloppe=None):
     return sum(
         p["valeur"]
         for p in s["positions"]
-        if env is None or p["env"] == env
+        if enveloppe is None
+        or p["env"] == enveloppe
     )
 
 
-def net(s):
+def patrimoine(s):
     return (
         s["courant"]
         + s["livret"]
-        + places(s)
+        + placements(s)
         + s["maison"]
         - s["dette"]
     )
 
 
-def fixes(s):
-    return s["charges"] + s["loyer"] + s["credit"]
+def depenses_fixes(s):
+    return (
+        s["charges"]
+        + s["loyer"]
+        + s["credit"]
+    )
 
 
-def brut_tranches(base, parts):
+def photo(s):
+    return {
+        "Courant": s["courant"],
+        "Livret": s["livret"],
+        "CTO": placements(s, "CTO"),
+        "Assurance-vie": placements(s, "AV"),
+        "Immobilier": s["maison"],
+        "Dette": s["dette"],
+        "Patrimoine net": patrimoine(s),
+    }
+
+
+def tranches(base, parts):
     bas = 0.0
-    montant = 0.0
+    total = 0.0
     lignes = []
-    quotient = max(0.0, base) / parts
 
     for haut, taux in TRANCHES:
         assiette = max(
             0.0,
-            min(quotient, haut) - bas,
+            min(
+                max(0.0, base) / parts,
+                haut,
+            )
+            - bas,
         )
-        impot_tranche = assiette * taux
-        montant += impot_tranche
 
-        libelle = (
-            f"Au-delà de {bas:,.0f}"
-            if haut == float("inf")
-            else f"{bas:,.0f} à {haut:,.0f}"
-        )
+        impot = assiette * taux
+
+        if haut == float("inf"):
+            libelle = "Au-delà de {:,.0f}".format(
+                bas
+            )
+        else:
+            libelle = "{:,.0f} à {:,.0f}".format(
+                bas,
+                haut,
+            )
 
         lignes.append(
             {
                 "Tranche par part": libelle,
                 "Taux (%)": taux * 100,
                 "Base par part (€)": assiette,
-                "IR par part (€)": impot_tranche,
+                "IR par part (€)": impot,
             }
         )
+
+        total += impot
         bas = haut
 
-    return montant * parts, lignes
+    return total * parts, lignes
 
 
-def ir(base, adultes, enfants):
+def calcul_ir(base, adultes, enfants):
     base = max(0.0, base)
 
     supplement = (
         min(enfants, 2) * 0.5
         + max(0, enfants - 2)
     )
+
     parts = adultes + supplement
 
-    brut, lignes = brut_tranches(base, parts)
-    sans_enfants, _ = brut_tranches(base, adultes)
+    brut, lignes = tranches(
+        base,
+        parts,
+    )
+
+    sans, _ = tranches(
+        base,
+        adultes,
+    )
 
     plafonne = max(
         brut,
-        sans_enfants - supplement * 2 * 1807.0,
+        sans - supplement * 2 * 1807.0,
     )
 
-    seuil = 3277.0 if adultes == 2 else 1982.0
-    constante = 1483.0 if adultes == 2 else 897.0
+    seuil = (
+        3277.0 if adultes == 2 else 1982.0
+    )
+    constante = (
+        1483.0 if adultes == 2 else 897.0
+    )
 
     if plafonne <= seuil:
         decote = min(
             plafonne,
-            max(0.0, constante - 0.4525 * plafonne),
+            max(
+                0.0,
+                constante - 0.4525 * plafonne,
+            ),
         )
     else:
         decote = 0.0
@@ -324,7 +281,6 @@ def ir(base, adultes, enfants):
     return {
         "base": base,
         "parts": parts,
-        "quotient": base / parts,
         "brut": brut,
         "plafonne": plafonne,
         "decote": decote,
@@ -333,146 +289,153 @@ def ir(base, adultes, enfants):
     }
 
 
-def base_professionnelle(s, annuels):
-    lignes = []
-    pension_deductions = []
+def fiscalite(
+    s,
+    revenus_fiscaux,
+    gain_cto,
+    gain_av,
+    option,
+):
+    details = []
+    pensions = []
 
-    for p, revenu in zip(s["personnes"], annuels):
-        revenu = max(0.0, revenu)
+    for p, montant in zip(
+        s["personnes"],
+        revenus_fiscaux,
+    ):
+        montant = max(0.0, montant)
 
         if p["statut"] == "Salaire":
             deduction = min(
-                revenu,
+                montant,
                 max(
                     509.0,
-                    min(revenu * 0.10, 14555.0),
+                    min(
+                        montant * 0.10,
+                        14555.0,
+                    ),
                 ),
             )
 
         elif p["statut"] == "Pension":
             deduction = min(
-                revenu,
-                max(454.0, revenu * 0.10),
+                montant,
+                max(
+                    454.0,
+                    montant * 0.10,
+                ),
             )
-            pension_deductions.append(len(lignes))
+            pensions.append(len(details))
 
         else:
             deduction = 0.0
 
-        lignes.append(
+        details.append(
             {
                 "Personne": p["nom"],
                 "Catégorie": p["statut"],
-                "Revenu fiscal (€)": revenu,
+                "Revenu fiscal (€)": montant,
                 "Déduction (€)": deduction,
             }
         )
 
-    total_pensions_deduit = sum(
-        lignes[i]["Déduction (€)"]
-        for i in pension_deductions
+    somme = sum(
+        details[i]["Déduction (€)"]
+        for i in pensions
     )
 
-    if total_pensions_deduit > 4439.0:
-        for i in pension_deductions:
-            lignes[i]["Déduction (€)"] *= (
-                4439.0 / total_pensions_deduit
+    if somme > 4439.0:
+        for i in pensions:
+            details[i]["Déduction (€)"] *= (
+                4439.0 / somme
             )
 
-    base = sum(
-        x["Revenu fiscal (€)"] - x["Déduction (€)"]
-        for x in lignes
+    base = max(
+        0.0,
+        sum(
+            ligne["Revenu fiscal (€)"]
+            - ligne["Déduction (€)"]
+            for ligne in details
+        )
+        - s["csg_report"],
     )
-
-    return base, lignes
-
-
-def fiscalite(s, annuels, gain_cto, gain_av, option):
-    base, lignes = base_professionnelle(s, annuels)
-
-    deduction_csg = s["csg_report"]
-    base = max(0.0, base - deduction_csg)
-
-    ages65 = sum(
-        p["age"] + 1 >= 65
-        for p in s["personnes"]
-    )
-
-    if base < 17670.0:
-        abattement_unitaire = 2822.0
-    elif base <= 28430.0:
-        abattement_unitaire = 1411.0
-    else:
-        abattement_unitaire = 0.0
-
-    age_abatt = ages65 * abattement_unitaire
-    base = max(0.0, base - age_abatt)
 
     adultes = len(s["personnes"])
     enfants = len(s["enfants"])
 
-    seul = ir(base, adultes, enfants)
-    av_gain = max(0.0, gain_av)
+    ir_seul = calcul_ir(
+        base,
+        adultes,
+        enfants,
+    )
 
     ancien = (
         s["av_ouverture"] is not None
         and s["annee"] - s["av_ouverture"] >= 8
     )
 
+    produit_av = max(0.0, gain_av)
+
     if ancien:
-        plafond_abattement = (
+        plafond = (
             9200.0 if adultes == 2 else 4600.0
         )
-        abatt_av = min(av_gain, plafond_abattement)
+        abattement_av = min(
+            produit_av,
+            plafond,
+        )
     else:
-        abatt_av = 0.0
+        abattement_av = 0.0
 
-    av_base = av_gain - abatt_av
+    base_av = produit_av - abattement_av
     pv = max(0.0, gain_cto)
 
-    taux_ir_av = 0.075 if ancien else 0.128
-
-    forfait = (
-        seul["net"]
-        + pv * 0.128
-        + av_base * taux_ir_av
+    taux_ir_av = (
+        0.075 if ancien else 0.128
     )
 
-    bareme_ir = ir(
-        base + pv + av_base,
+    ir_forfait = (
+        ir_seul["net"]
+        + pv * 0.128
+        + base_av * taux_ir_av
+    )
+
+    ir_bareme = calcul_ir(
+        base + pv + base_av,
         adultes,
         enfants,
     )
 
-    ps_cto = pv * 0.186
-    ps_av = av_gain * 0.172
-
     if option == "Forfait":
-        retenu = forfait
-        detail = seul
+        retenu = ir_forfait
+        ir_detail = ir_seul
     else:
-        retenu = bareme_ir["net"]
-        detail = bareme_ir
+        retenu = ir_bareme["net"]
+        ir_detail = ir_bareme
 
-    ir_du = 0.0 if retenu < 61.0 else retenu
+    ir_du = (
+        0.0 if retenu < 61.0 else retenu
+    )
+
+    ps_cto = pv * 0.186
+    ps_av = produit_av * 0.172
 
     return {
+        "details": details,
         "base": base,
-        "lignes_revenus": lignes,
-        "csg_deduite": deduction_csg,
-        "abatt_age": age_abatt,
-        "seul": seul,
-        "detail": detail,
+        "csg_deduite": s["csg_report"],
+        "ir_seul": ir_seul,
+        "ir_detail": ir_detail,
         "pv": pv,
-        "av_gain": av_gain,
-        "av_base": av_base,
-        "av_abatt": abatt_av,
-        "av_ancien": ancien,
-        "forfait": forfait,
-        "bareme": bareme_ir["net"],
+        "produit_av": produit_av,
+        "ancien": ancien,
+        "abattement_av": abattement_av,
+        "base_av": base_av,
+        "forfait": ir_forfait,
+        "bareme": ir_bareme["net"],
+        "ir_du": ir_du,
         "ps_cto": ps_cto,
         "ps_av": ps_av,
-        "ir_du": ir_du,
         "total": ir_du + ps_cto + ps_av,
         "option": option,
         "csg_future": (
@@ -484,7 +447,7 @@ def fiscalite(s, annuels, gain_cto, gain_av, option):
 
 
 def preparer(s, premier=False):
-    notes = []
+    messages = []
 
     if not premier:
         s["charges"] *= 1.015
@@ -499,10 +462,10 @@ def preparer(s, premier=False):
             p["fiscal"] *= 0.72
             p["statut"] = "Pension"
 
-            notes.append(
+            messages.append(
                 p["nom"]
-                + " : retraite prévue par le scénario ; "
-                "revenu ramené à 72 % du revenu antérieur."
+                + " part à la retraite dans ce scénario : "
+                + "revenu ramené à 72 % du revenu antérieur."
             )
 
     gardes = []
@@ -513,50 +476,53 @@ def preparer(s, premier=False):
                 0.0,
                 s["charges"] - 300.0,
             )
-            notes.append(
-                "Un enfant devient fiscalement indépendant "
-                "à 22 ans dans le scénario ; "
+
+            messages.append(
+                "Départ fiscal d'un enfant à 22 ans : "
                 "charges réduites de 300 €/mois."
             )
+
         else:
             gardes.append(age)
 
             if age == 18 and not premier:
                 s["charges"] += 200.0
-                notes.append(
-                    "Études d'un enfant : charges "
-                    "supplémentaires de 200 €/mois."
+
+                messages.append(
+                    "Études d'un enfant : "
+                    "charges supplémentaires de 200 €/mois."
                 )
 
     s["enfants"] = gardes
 
-    age = max(
-        p["age"] for p in s["personnes"]
-    )
     retraite = all(
         p["statut"] == "Pension"
         for p in s["personnes"]
     )
+
     independant = any(
         p["statut"] == "Bénéfice réel"
         for p in s["personnes"]
     )
 
-    if retraite or independant:
-        reserve = 6
-    elif s["enfants"]:
-        reserve = 4
-    else:
-        reserve = 3
+    age = max(
+        p["age"]
+        for p in s["personnes"]
+    )
 
-    s["reserve"] = reserve
+    if retraite or independant:
+        mois_reserve = 6
+    elif s["enfants"]:
+        mois_reserve = 4
+    else:
+        mois_reserve = 3
 
     if age >= 75:
-        s["risque"] = 3
+        s["risque_max"] = 3
     elif retraite or age >= 58:
-        s["risque"] = 4
+        s["risque_max"] = 4
     else:
-        s["risque"] = 5
+        s["risque_max"] = 5
 
     if retraite:
         besoin = (
@@ -571,44 +537,31 @@ def preparer(s, premier=False):
     elif s["maison"] == 0:
         besoin = "Constituer un apport"
     else:
-        besoin = "Développer un patrimoine diversifié"
+        besoin = "Développer le patrimoine"
 
-    s["objectif_actuel"] = besoin
-    s["cible_reserve"] = reserve * fixes(s)
+    s["besoin"] = besoin
 
-    complement_projet = (
+    s["reserve_cible"] = (
+        mois_reserve * depenses_fixes(s)
+    )
+
+    complement = (
         10000.0
         if not retraite and s["maison"] == 0
         else 5000.0
     )
 
-    s["cible_projet"] = (
-        s["cible_reserve"] + complement_projet
+    s["projet_cible"] = (
+        s["reserve_cible"] + complement
     )
-    s["net_debut"] = net(s)
-    s["notes_preparation"] = notes
+
+    s["preparation"] = messages
 
     return s
 
 
-def creer(nom):
+def nouveau(nom):
     s = copy.deepcopy(PROFILS[nom])
-
-    s.update(
-        {
-            "profil": nom,
-            "annee": 1,
-            "phase": "decisions",
-            "bilans": [],
-            "pertes": [],
-            "csg_report": 0.0,
-            "av_ouverture": None,
-            "av_capital": 0.0,
-            "notes_preparation": [],
-        }
-    )
-
-    s["id"] = str(random.getrandbits(48))
 
     s["positions"] = [
         {
@@ -620,25 +573,39 @@ def creer(nom):
         for enveloppe, support, montant in s["positions"]
     ]
 
+    s.update(
+        {
+            "profil": nom,
+            "uid": str(random.getrandbits(48)),
+            "annee": 1,
+            "phase": "decisions",
+            "bilans": [],
+            "pertes": [],
+            "csg_report": 0.0,
+            "av_ouverture": None,
+            "av_capital": 0.0,
+        }
+    )
+
     s["reglages"] = {
         "livret": 0.0,
         "protection": 0,
         "option": "Forfait",
         "versements": {
             enveloppe + " | " + support: 0.0
-            for enveloppe in ["CTO", "Assurance-vie"]
+            for enveloppe in ["CTO", "AV"]
             for support in SUPPORTS
         },
     }
 
-    return preparer(s, premier=True)
+    return preparer(s, True)
 
 
-def acheter(s, env, support, montant):
+def investir(s, env, support, montant):
     if montant <= 0:
         return
 
-    if env == "Assurance-vie":
+    if env == "AV":
         if s["av_ouverture"] is None:
             s["av_ouverture"] = s["annee"]
 
@@ -663,21 +630,20 @@ def acheter(s, env, support, montant):
     )
 
 
-def ceder(s, pct_cto, pct_av):
+def vendre(s, cto, av):
     gains = {
         "CTO": 0.0,
-        "Assurance-vie": 0.0,
+        "AV": 0.0,
     }
-    produits = 0.0
+    produit = 0.0
 
     for p in s["positions"]:
         fraction = (
-            pct_cto
-            if p["env"] == "CTO"
-            else pct_av
+            cto if p["env"] == "CTO" else av
         ) / 100
 
-        produits += p["valeur"] * fraction
+        produit += p["valeur"] * fraction
+
         gains[p["env"]] += (
             p["valeur"] - p["capital"]
         ) * fraction
@@ -685,8 +651,8 @@ def ceder(s, pct_cto, pct_av):
         p["valeur"] *= 1 - fraction
         p["capital"] *= 1 - fraction
 
-    s["av_capital"] *= 1 - pct_av / 100
-    s["courant"] += produits
+    s["av_capital"] *= 1 - av / 100
+    s["courant"] += produit
 
     s["positions"] = [
         p for p in s["positions"]
@@ -694,91 +660,80 @@ def ceder(s, pct_cto, pct_av):
     ]
 
     s["pertes"] = [
-        x for x in s["pertes"]
-        if s["annee"] - x["annee"] <= 10
+        p for p in s["pertes"]
+        if s["annee"] - p["annee"] <= 10
     ]
 
-    gain = gains["CTO"]
+    taxable = max(0.0, gains["CTO"])
     utilise = 0.0
 
-    if gain < 0:
+    if gains["CTO"] < 0:
         s["pertes"].append(
             {
                 "annee": s["annee"],
-                "montant": -gain,
+                "montant": -gains["CTO"],
             }
         )
 
-    if gain > 0:
-        for perte in s["pertes"]:
-            deduction = min(
-                gain,
-                perte["montant"],
-            )
-            gain -= deduction
-            perte["montant"] -= deduction
-            utilise += deduction
+    for perte in s["pertes"]:
+        deduction = min(
+            taxable,
+            perte["montant"],
+        )
+
+        taxable -= deduction
+        perte["montant"] -= deduction
+        utilise += deduction
 
     s["pertes"] = [
-        x for x in s["pertes"]
-        if x["montant"] > 0.001
+        p for p in s["pertes"]
+        if p["montant"] > 0.001
     ]
 
-    return produits, gains, max(0.0, gain), utilise
+    return produit, gains, taxable, utilise
 
 
-def photo(s):
-    return {
-        "Compte courant": s["courant"],
-        "Livret": s["livret"],
-        "Compte-titres": places(s, "CTO"),
-        "Assurance-vie": places(s, "Assurance-vie"),
-        "Immobilier": s["maison"],
-        "Dette": s["dette"],
-        "Patrimoine net": net(s),
-    }
-
-
-def simuler(s, reg, pct_cto, pct_av, retrait):
+def simuler(
+    s,
+    reg,
+    cto,
+    av,
+    retrait,
+):
     t = copy.deepcopy(s)
 
-    debut = net(t)
-    photo_debut = photo(t)
+    debut = patrimoine(t)
+    image_debut = photo(t)
 
-    debut_age = [
-        p["age"] for p in t["personnes"]
-    ]
-
-    produits, gains, pv, pertes_utilisees = ceder(
+    produit, gains, taxable, utilise = vendre(
         t,
-        pct_cto,
-        pct_av,
+        cto,
+        av,
     )
 
     t["courant"] += retrait
     t["livret"] -= retrait
 
     revenus = [
-        [p["revenu"] for p in t["personnes"]]
+        [
+            p["revenu"]
+            for p in t["personnes"]
+        ]
         for _ in range(12)
     ]
 
     fiscaux = [
-        [p["fiscal"] for p in t["personnes"]]
+        [
+            p["fiscal"]
+            for p in t["personnes"]
+        ]
         for _ in range(12)
     ]
 
     depenses = [0.0] * 12
     indemnites = [0.0] * 12
-    journal = list(t["notes_preparation"])
-    cout = reg["protection"]
 
-    eligibles = [
-        "Dépense imprévue",
-        "Santé",
-        "Marchés en baisse",
-        "Marchés en hausse",
-    ]
+    journal = list(t["preparation"])
 
     actifs = [
         i
@@ -798,13 +753,22 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
         if p["statut"] == "Bénéfice réel"
     ]
 
+    eligibles = [
+        "Dépense imprévue",
+        "Santé",
+        "Baisse des marchés",
+        "Hausse des marchés",
+    ]
+
     if actifs:
-        eligibles.append("Arrêt de travail")
+        eligibles.append(
+            "Arrêt de travail"
+        )
 
     if salaries:
         eligibles += [
             "Augmentation",
-            "Prime professionnelle",
+            "Prime",
             "Chômage temporaire",
         ]
 
@@ -815,18 +779,25 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
         ]
 
     if t["maison"] > 0:
-        eligibles.append("Travaux du logement")
+        eligibles.append(
+            "Travaux du logement"
+        )
 
     if t["voiture"]:
-        eligibles.append("Réparation automobile")
+        eligibles.append(
+            "Réparation automobile"
+        )
 
     if (
         len(t["personnes"]) == 2
         and min(
-            p["age"] for p in t["personnes"]
+            p["age"]
+            for p in t["personnes"]
         ) < 43
     ):
-        eligibles.append("Naissance")
+        eligibles.append(
+            "Naissance"
+        )
 
     nombre = random.choices(
         [0, 1, 2, 3],
@@ -834,19 +805,51 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
         k=1,
     )[0]
 
-    evenements = random.sample(
+    selection = random.sample(
         eligibles,
-        min(nombre, len(eligibles)),
+        min(
+            nombre,
+            len(eligibles),
+        ),
     )
 
-    choc_marche = 0.0
+    evenements = sorted(
+        [
+            (
+                random.randint(0, 11),
+                evenement,
+            )
+            for evenement in selection
+        ]
+    )
 
-    for evenement in evenements:
-        mois = random.randint(1, 12)
-        index_mois = mois - 1
+    rendements = {}
 
-        message = (
-            f"Mois {mois} — {evenement}"
+    for support, parametres in SUPPORTS.items():
+        rendement_annuel = max(
+            -0.70,
+            min(
+                0.70,
+                random.gauss(
+                    parametres[0],
+                    parametres[1],
+                ),
+            ),
+        )
+
+        rendement_mensuel = (
+            (1 + rendement_annuel) ** (1 / 12)
+            - 1
+        )
+
+        rendements[support] = [
+            rendement_mensuel
+        ] * 12
+
+    for mois, evenement in evenements:
+        texte = "Mois {} — {}".format(
+            mois + 1,
+            evenement,
         )
 
         if evenement in [
@@ -860,38 +863,63 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
                 if evenement == "Travaux du logement"
                 else 3000
             )
+
             montant = float(
-                random.randint(500, maximum)
+                random.randint(
+                    500,
+                    maximum,
+                )
             )
-            depenses[index_mois] += montant
-            message += f" : {euro(montant)}."
+
+            depenses[mois] += montant
+
+            texte += (
+                " : "
+                + euros(montant)
+                + "."
+            )
 
         elif evenement in [
-            "Marchés en baisse",
-            "Marchés en hausse",
+            "Baisse des marchés",
+            "Hausse des marchés",
         ]:
-            choc_marche += (
+            choc = (
                 -0.15
-                if evenement == "Marchés en baisse"
+                if evenement == "Baisse des marchés"
                 else 0.12
             )
-            message += (
-                " : choc commun aux supports, "
-                "modulé selon leur risque."
-            )
+
+            for support, parametres in SUPPORTS.items():
+                ancien_taux = (
+                    rendements[support][mois]
+                )
+
+                nouveau_taux = (
+                    (1 + ancien_taux)
+                    * (
+                        1
+                        + choc * parametres[2] / 8
+                    )
+                    - 1
+                )
+
+                rendements[support][mois] = (
+                    nouveau_taux
+                )
 
         elif evenement == "Naissance":
             t["enfants"].append(0)
-            depenses[index_mois] += 1000.0
 
-            for m in range(index_mois, 12):
+            depenses[mois] += 1000.0
+
+            for m in range(mois, 12):
                 depenses[m] += 250.0
 
             t["charges"] += 250.0
 
-            message += (
-                " : 1 000 € d'équipement et "
-                "250 €/mois de charges nouvelles."
+            texte += (
+                " : 1 000 € puis 250 €/mois "
+                "de dépenses supplémentaires."
             )
 
         else:
@@ -903,7 +931,7 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
 
             elif evenement in [
                 "Augmentation",
-                "Prime professionnelle",
+                "Prime",
                 "Chômage temporaire",
             ]:
                 groupe = salaries
@@ -911,155 +939,176 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
             else:
                 groupe = actifs
 
-            index_personne = random.choice(groupe)
-            p = t["personnes"][index_personne]
-            message += " — " + p["nom"]
+            index = random.choice(groupe)
+            p = t["personnes"][index]
+
+            texte += (
+                " — " + p["nom"]
+            )
 
             if evenement == "Augmentation":
                 montant = float(
-                    random.randint(50, 150)
+                    random.randint(
+                        50,
+                        150,
+                    )
                 )
+
                 ratio = (
                     p["fiscal"] / p["revenu"]
                     if p["revenu"]
                     else 1.0
                 )
 
-                for m in range(index_mois, 12):
-                    revenus[m][index_personne] += montant
-                    fiscaux[m][index_personne] += montant * ratio
+                for m in range(mois, 12):
+                    revenus[m][index] += (
+                        montant
+                    )
+
+                    fiscaux[m][index] += (
+                        montant * ratio
+                    )
 
                 p["revenu"] += montant
                 p["fiscal"] += montant * ratio
 
-                message += (
-                    f" : +{euro(montant)}/mois."
+                texte += (
+                    " : +"
+                    + euros(montant)
+                    + "/mois."
                 )
 
-            elif evenement == "Prime professionnelle":
+            elif evenement == "Prime":
                 montant = float(
-                    random.randint(500, 2000)
+                    random.randint(
+                        500,
+                        2000,
+                    )
                 )
 
-                revenus[index_mois][index_personne] += montant
-                fiscaux[index_mois][index_personne] += montant
+                revenus[mois][index] += (
+                    montant
+                )
 
-                message += (
-                    f" : {euro(montant)}, imposable."
+                fiscaux[mois][index] += (
+                    montant
+                )
+
+                texte += (
+                    " : "
+                    + euros(montant)
+                    + ", imposable."
                 )
 
             else:
                 if evenement == "Baisse d'activité":
                     facteur = 0.65
+
                 elif evenement == "Bonne activité":
                     facteur = 1.25
+
                 else:
                     facteur = 0.55
 
                 duree = (
-                    3
-                    if evenement in [
-                        "Baisse d'activité",
-                        "Bonne activité",
-                        "Chômage temporaire",
-                    ]
-                    else 2
+                    2
+                    if evenement == "Arrêt de travail"
+                    else 3
                 )
 
                 for m in range(
-                    index_mois,
-                    min(12, index_mois + duree),
+                    mois,
+                    min(
+                        12,
+                        mois + duree,
+                    ),
                 ):
                     perte = (
-                        revenus[m][index_personne]
+                        revenus[m][index]
                         * (1 - facteur)
                     )
 
-                    revenus[m][index_personne] *= facteur
-                    fiscaux[m][index_personne] *= facteur
+                    revenus[m][index] *= (
+                        facteur
+                    )
+
+                    fiscaux[m][index] *= (
+                        facteur
+                    )
 
                     if evenement == "Arrêt de travail":
                         couverture = {
                             0: 0.0,
                             20: 0.50,
                             40: 0.80,
-                        }[cout]
+                        }[
+                            reg["protection"]
+                        ]
 
                         indemnites[m] += (
-                            max(0.0, perte) * couverture
+                            max(0.0, perte)
+                            * couverture
                         )
 
-                message += (
-                    " : variation temporaire des revenus ; "
-                    "détail dans le tableau mensuel."
+                texte += (
+                    " : variation temporaire "
+                    "des revenus, limitée à cette année."
                 )
 
-        journal.append(message)
+        journal.append(texte)
 
     if not evenements:
         journal.append(
             "Aucun événement aléatoire majeur cette année."
         )
 
-    charges_base = s["charges"]
-
     annuels = [
         sum(
-            fiscaux[m][i]
-            for m in range(12)
+            fiscaux[mois][index]
+            for mois in range(12)
         )
-        for i in range(len(t["personnes"]))
+        for index in range(
+            len(t["personnes"])
+        )
     ]
 
     f = fiscalite(
         t,
         annuels,
-        pv,
-        gains["Assurance-vie"],
+        taxable,
+        gains["AV"],
         reg["option"],
     )
 
-    t["csg_report"] = f["csg_future"]
-
     f.update(
         {
+            "produit": produit,
             "gain_cto_brut": gains["CTO"],
-            "pertes_utilisees": pertes_utilisees,
+            "pertes_utilisees": utilise,
             "pertes_restantes": sum(
-                x["montant"]
-                for x in t["pertes"]
+                p["montant"]
+                for p in t["pertes"]
             ),
-            "produit_ventes": produits,
         }
     )
 
-    performances = {
-        nom: max(
-            -0.75,
-            min(
-                0.75,
-                random.gauss(
-                    parametres[0],
-                    parametres[1],
-                )
-                + choc_marche * parametres[2] / 8,
-            ),
-        )
-        for nom, parametres in SUPPORTS.items()
-    }
+    t["csg_report"] = (
+        f["csg_future"]
+    )
 
     lignes = []
+    interets = 0.0
+    gains_marche = 0.0
+    rembourse = 0.0
 
     programme = (
         reg["livret"]
-        + sum(reg["versements"].values())
+        + sum(
+            reg["versements"].values()
+        )
     )
 
-    interets = 0.0
-    gain_marche = 0.0
-    rembourse = 0.0
-
-    for index_mois in range(12):
+    for mois in range(12):
         credit = min(
             t["credit"],
             t["dette"],
@@ -1072,53 +1121,65 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
             t["dette"] = 0.0
             t["credit"] = 0.0
 
-        taxe = f["total"] / 12
+        taxe = (
+            f["total"] / 12
+        )
 
         t["courant"] += (
-            sum(revenus[index_mois])
-            + indemnites[index_mois]
-            - charges_base
-            - t["loyer"]
+            sum(revenus[mois])
+            + indemnites[mois]
+            - s["charges"]
+            - s["loyer"]
             - credit
-            - cout
-            - depenses[index_mois]
+            - reg["protection"]
+            - depenses[mois]
             - taxe
+        )
+
+        av_mensuel = sum(
+            montant
+            for cle, montant in reg["versements"].items()
+            if cle.startswith(
+                "AV | "
+            )
         )
 
         execute = (
             t["courant"] >= programme
+            and (
+                t["av_capital"]
+                + av_mensuel
+                <= 150000.0 + 0.001
+            )
         )
-
-        versement_av = sum(
-            montant
-            for cle, montant in reg["versements"].items()
-            if cle.startswith("Assurance-vie | ")
-        )
-
-        limite_av = (
-            t["av_capital"] + versement_av
-            <= 150000.0 + 0.001
-        )
-
-        execute = execute and limite_av
 
         verse_livret = (
-            reg["livret"] if execute else 0.0
+            reg["livret"]
+            if execute
+            else 0.0
         )
+
         verse_placements = (
-            sum(reg["versements"].values())
+            sum(
+                reg["versements"].values()
+            )
             if execute
             else 0.0
         )
 
         if execute:
             t["courant"] -= programme
-            t["livret"] += verse_livret
+
+            t["livret"] += (
+                verse_livret
+            )
 
             for cle, montant in reg["versements"].items():
-                enveloppe, support = cle.split(" | ")
+                enveloppe, support = (
+                    cle.split(" | ")
+                )
 
-                acheter(
+                investir(
                     t,
                     enveloppe,
                     support,
@@ -1127,7 +1188,10 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
 
         secours = min(
             t["livret"],
-            max(0.0, -t["courant"]),
+            max(
+                0.0,
+                -t["courant"],
+            ),
         )
 
         t["livret"] -= secours
@@ -1135,51 +1199,62 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
 
         interet_mois = (
             t["livret"]
-            * (1.02 ** (1 / 12) - 1)
+            * (
+                1.02 ** (1 / 12)
+                - 1
+            )
         )
 
-        t["livret"] += interet_mois
-        interets += interet_mois
+        t["livret"] += (
+            interet_mois
+        )
+
+        interets += (
+            interet_mois
+        )
 
         gain_mois = 0.0
 
-        for position in t["positions"]:
+        for p in t["positions"]:
             variation = (
-                position["valeur"]
-                * (
-                    (
-                        1 + performances[position["support"]]
-                    ) ** (1 / 12)
-                    - 1
-                )
+                p["valeur"]
+                * rendements[
+                    p["support"]
+                ][mois]
             )
 
-            position["valeur"] += variation
+            p["valeur"] += variation
             gain_mois += variation
 
-        gain_marche += gain_mois
+        gains_marche += (
+            gain_mois
+        )
 
         lignes.append(
             {
-                "Mois": index_mois + 1,
-                "Revenus avant IR": sum(revenus[index_mois]),
-                "Revenus fiscaux": sum(fiscaux[index_mois]),
-                "Indemnités fictives": indemnites[index_mois],
-                "Charges": charges_base,
-                "Loyer": t["loyer"],
+                "Mois": mois + 1,
+                "Revenus avant IR": sum(
+                    revenus[mois]
+                ),
+                "Revenus fiscaux": sum(
+                    fiscaux[mois]
+                ),
+                "Indemnités": indemnites[mois],
+                "Charges": s["charges"],
+                "Loyer": s["loyer"],
                 "Crédit": credit,
-                "Protection": cout,
-                "Impôts provisionnés": taxe,
-                "Aléas payés": depenses[index_mois],
+                "Protection": reg["protection"],
+                "Impôt provisionné": taxe,
+                "Aléas": depenses[mois],
                 "Virement livret": verse_livret,
                 "Investissements": verse_placements,
                 "Secours livret": secours,
                 "Courant": t["courant"],
                 "Livret": t["livret"],
-                "Placements": places(t),
+                "Placements": placements(t),
                 "Dette": t["dette"],
-                "Patrimoine net": net(t),
-                "Intérêts livret": interet_mois,
+                "Patrimoine net": patrimoine(t),
+                "Intérêts": interet_mois,
                 "Gains placements": gain_mois,
                 "Virements suspendus": not execute,
             }
@@ -1187,196 +1262,1400 @@ def simuler(s, reg, pct_cto, pct_av, retrait):
 
     df = pd.DataFrame(lignes)
 
-    if places(t) > 0:
+    if placements(t) > 0:
         risque = sum(
             p["valeur"]
-            * SUPPORTS[p["support"]][2]
+            * SUPPORTS[
+                p["support"]
+            ][2]
             for p in t["positions"]
-        ) / places(t)
+        ) / placements(t)
     else:
         risque = 0.0
 
-    objectifs = [
-        {
-            "Objectif fixé": (
-                "Réserve sur livret : "
-                + euro(s["cible_reserve"])
-            ),
-            "Cible (€)": s["cible_reserve"],
-            "Résultat (€)": t["livret"],
-            "Atteint": (
-                t["livret"] >= s["cible_reserve"]
-            ),
-        },
-        {
-            "Objectif fixé": (
-                "Projet : " + s["objectif_actuel"]
-            ),
-            "Cible (€)": s["cible_projet"],
-            "Résultat (€)": t["livret"],
-            "Atteint": (
-                t["livret"] >= s["cible_projet"]
-            ),
-        },
+    objectifs = []
+
+    cibles = [
+        (
+            "Réserve de sécurité",
+            s["reserve_cible"],
+        ),
+        (
+            s["besoin"],
+            s["projet_cible"],
+        ),
     ]
 
+    for nom, cible in cibles:
+        ratio = (
+            t["livret"] / cible
+            if cible > 0
+            else 1.0
+        )
+
+        if ratio >= 1:
+            statut = "Atteint"
+        elif ratio >= 0.5:
+            statut = "Partiellement atteint"
+        else:
+            statut = "Non atteint"
+
+        objectifs.append(
+            {
+                "Objectif": nom,
+                "Cible fixée (€)": cible,
+                "Résultat (€)": t["livret"],
+                "Statut": statut,
+            }
+        )
+
     criteres = {
-        "Réserve fixée en début d'année": (
-            4 if objectifs[0]["Atteint"] else 0
+        "Réserve de sécurité": (
+            4
+            if t["livret"] >= s["reserve_cible"]
+            else 0
         ),
-        "Projet fixé en début d'année": (
-            4 if objectifs[1]["Atteint"] else 0
+        "Objectif du projet": (
+            4
+            if t["livret"] >= s["projet_cible"]
+            else 0
         ),
-        "Aucun découvert en fin de mois": (
-            4 if df["Courant"].min() >= 0 else 0
+        "Pas de découvert mensuel": (
+            4
+            if df["Courant"].min() >= 0
+            else 0
         ),
         "Risque compatible": (
-            4 if risque <= s["risque"] else 0
+            4
+            if risque <= s["risque_max"]
+            else 0
         ),
         "Patrimoine préservé": (
-            4 if net(t) >= debut else 0
+            4
+            if patrimoine(t) >= debut
+            else 0
         ),
     }
 
     flux = (
-        sum(sum(x) for x in revenus)
+        df["Revenus avant IR"].sum()
         + sum(indemnites)
-        - charges_base * 12
-        - t["loyer"] * 12
+        - s["charges"] * 12
+        - s["loyer"] * 12
         - rembourse
-        - cout * 12
+        - reg["protection"] * 12
         - sum(depenses)
         - f["total"]
     )
 
-    ecart = net(t) - (
-        debut
-        + flux
-        + rembourse
-        + interets
-        + gain_marche
+    performances = {}
+
+    for support, serie in rendements.items():
+        facteur = 1.0
+
+        for taux in serie:
+            facteur *= (
+                1 + taux
+            )
+
+        performances[support] = (
+            facteur - 1
+        ) * 100
+
+    ecart = (
+        patrimoine(t)
+        - (
+            debut
+            + flux
+            + rembourse
+            + interets
+            + gains_marche
+        )
     )
 
-    t["bilans"].append(
-        {
-            "annee": s["annee"],
-            "ages": debut_age,
-            "personnes": [
-                p["nom"] for p in t["personnes"]
-            ],
-            "journal": journal,
-            "mensuel": lignes,
-            "fiscal": f,
-            "debut": debut,
-            "fin": net(t),
-            "photo_debut": photo_debut,
-            "photo_fin": photo(t),
-            "interets": interets,
-            "gains": gain_marche,
-            "rembourse": rembourse,
-            "flux": flux,
-            "ecart": ecart,
-            "objectifs": objectifs,
-            "criteres": criteres,
-            "note": sum(criteres.values()),
-            "risque": risque,
-            "perf": performances,
-        }
-    )
+    bilan = {
+        "annee": s["annee"],
+        "ages": [
+            p["age"]
+            for p in s["personnes"]
+        ],
+        "noms": [
+            p["nom"]
+            for p in s["personnes"]
+        ],
+        "journal": journal,
+        "mensuel": lignes,
+        "fiscal": f,
+        "debut": debut,
+        "fin": patrimoine(t),
+        "photo_debut": image_debut,
+        "photo_fin": photo(t),
+        "interets": interets,
+        "gains": gains_marche,
+        "rembourse": rembourse,
+        "flux": float(flux),
+        "ecart": float(ecart),
+        "objectifs": objectifs,
+        "criteres": criteres,
+        "note": sum(
+            criteres.values()
+        ),
+        "risque": risque,
+        "performances": performances,
+    }
 
+    t["bilans"].append(bilan)
     t["reglages"] = reg
     t["phase"] = "debrief"
 
     return t
 
 
-def afficher_bilan(b):
-    df = pd.DataFrame(b["mensuel"])
+def afficher_bilan(b, uid):
+    df = pd.DataFrame(
+        b["mensuel"]
+    )
     f = b["fiscal"]
 
-    st.subheader("1. Évolution de l'année")
-
-    for message in b["journal"]:
-        st.write("• " + message)
-
-    st.subheader("2. Atteinte des objectifs fixés")
-
-    st.dataframe(
-        pd.DataFrame(b["objectifs"]).round(2),
-        hide_index=True,
+    st.subheader(
+        "1. Évolution de la situation"
     )
 
-    st.write(
-        "Les cibles ci-dessus ont été figées avant la simulation ; "
-        "elles ne sont pas recalculées pour améliorer la note."
+    for texte in b["journal"]:
+        st.write(
+            "• " + texte
+        )
+
+    st.subheader(
+        "2. Objectifs fixés et résultats"
     )
-
-    st.subheader("3. Budget exécuté")
-
-    postes = [
-        "Revenus avant IR",
-        "Indemnités fictives",
-        "Charges",
-        "Loyer",
-        "Crédit",
-        "Protection",
-        "Impôts provisionnés",
-        "Aléas payés",
-        "Virement livret",
-        "Investissements",
-        "Secours livret",
-    ]
 
     st.dataframe(
         pd.DataFrame(
-            {
-                "Poste": postes,
-                "Total annuel (€)": [
-                    df[nom].sum()
-                    for nom in postes
-                ],
-            }
+            b["objectifs"]
         ).round(2),
         hide_index=True,
     )
 
     st.caption(
-        "Les virements entre comptes sont des transferts internes. "
-        "Le remboursement du capital réduit simultanément "
-        "la trésorerie et la dette."
+        "Les objectifs ont été figés en début de tour. "
+        "Le projet est une cible d'épargne, "
+        "pas un achat automatique. "
+        "Sa cible inclut la réserve de sécurité."
     )
 
     st.subheader(
-        "4. Déroulé fiscal — paramètres figés de référence 2026"
+        "3. Budget annuel exécuté"
+    )
+
+    noms = [
+        "Revenus avant IR",
+        "Indemnités",
+        "Charges",
+        "Loyer",
+        "Crédit",
+        "Protection",
+        "Impôt provisionné",
+        "Aléas",
+        "Virement livret",
+        "Investissements",
+        "Secours livret",
+    ]
+
+    tableau_budget = pd.DataFrame(
+        {
+            "Poste": noms,
+            "Total annuel (€)": [
+                df[nom].sum()
+                for nom in noms
+            ],
+        }
+    )
+
+    st.dataframe(
+        tableau_budget.round(2),
+        hide_index=True,
+    )
+
+    st.caption(
+        "Un virement entre comptes n'est pas "
+        "une dépense patrimoniale. "
+        "Un remboursement de capital réduit aussi la dette."
+    )
+
+    st.subheader(
+        "4. Déroulé fiscal détaillé"
     )
 
     st.dataframe(
         pd.DataFrame(
-            f["lignes_revenus"]
+            f["details"]
         ).round(2),
         hide_index=True,
     )
 
     st.write(
         "CSG déductible reportée : "
-        f"{euro(f['csg_deduite'])}. "
-        "Abattement d'âge dans le périmètre du modèle : "
-        f"{euro(f['abatt_age'])}. "
-        "Base professionnelle/pensions nette : "
-        f"{euro(f['base'])}."
+        + euros(f["csg_deduite"])
+        + ". Base professionnelle et pensions après déductions : "
+        + euros(f["base"])
+        + "."
     )
 
     st.write(
-        f"Ventes brutes : {euro(f['produit_ventes'])}. "
-        f"Gain net CTO réalisé : {euro(f['gain_cto_brut'])}. "
-        "Pertes antérieures imputées : "
-        f"{euro(f['pertes_utilisees'])}. "
-        f"Plus-value CTO taxable : {euro(f['pv'])}. "
-        "Pertes encore reportables : "
-        f"{euro(f['pertes_restantes'])}."
+        "Ventes : "
+        + euros(f["produit"])
+        + ". Gain CTO réalisé : "
+        + euros(f["gain_cto_brut"])
+        + ". Pertes imputées : "
+        + euros(f["pertes_utilisees"])
+        + ". Gain CTO taxable : "
+        + euros(f["pv"])
+        + ". Pertes encore reportables : "
+        + euros(f["pertes_restantes"])
+        + "."
     )
 
     st.write(
-        "Produits d'assurance-vie rachetés : "
-        f"{euro(f['av_gain'])}. "
-        "Contrat d'au moins huit ans
+        "Produits assurance-vie rachetés : "
+        + euros(f["produit_av"])
+        + "."
+    )
+
+    anciennete_texte = (
+        "oui"
+        if f["ancien"]
+        else "non"
+    )
+
+    st.write(
+        "Contrat de huit ans ou plus : "
+        + anciennete_texte
+        + "."
+    )
+
+    st.write(
+        "Abattement assurance-vie : "
+        + euros(f["abattement_av"])
+        + ". Base AV pour IR : "
+        + euros(f["base_av"])
+        + "."
+    )
+
+    st.write(
+        "Comparaison IR total : forfait "
+        + euros(f["forfait"])
+        + " ; barème global "
+        + euros(f["bareme"])
+        + ". Choix : "
+        + f["option"]
+        + "."
+    )
+
+    detail = f["ir_detail"]
+
+    st.write(
+        "Base soumise au barème : "
+        + euros(detail["base"])
+        + " ; parts : "
+        + str(detail["parts"])
+        + "."
+    )
+
+    st.dataframe(
+        pd.DataFrame(
+            detail["lignes"]
+        ).round(2),
+        hide_index=True,
+    )
+
+    st.write(
+        "IR au quotient : "
+        + euros(detail["brut"])
+        + " ; après plafonnement familial : "
+        + euros(detail["plafonne"])
+        + " ; décote : "
+        + euros(detail["decote"])
+        + "."
+    )
+
+    st.write(
+        "IR total retenu, forfaits éventuels compris : "
+        + euros(f["ir_du"])
+        + ". PS CTO à 18,6 % : "
+        + euros(f["ps_cto"])
+        + ". PS AV à 17,2 % : "
+        + euros(f["ps_av"])
+        + "."
+    )
+
+    st.write(
+        "Total fiscal annuel : "
+        + euros(f["total"])
+        + " ; provision mensuelle : "
+        + euros(f["total"] / 12)
+        + "."
+    )
+
+    st.caption(
+        "Le total annuel est provisionné en douze parts égales. "
+        "Ce n'est pas le calendrier réel du prélèvement "
+        "à la source ou des régularisations. "
+        "Voir les limites fiscales en haut de page."
+    )
+
+    st.subheader(
+        "5. Synthèse patrimoniale"
+    )
+
+    tableau_patrimoine = pd.DataFrame(
+        [
+            {
+                "Poste": nom,
+                "Début (€)": montant,
+                "Fin (€)": (
+                    b["photo_fin"][nom]
+                ),
+                "Variation (€)": (
+                    b["photo_fin"][nom]
+                    - montant
+                ),
+            }
+            for nom, montant in b["photo_debut"].items()
+        ]
+    )
+
+    st.dataframe(
+        tableau_patrimoine.round(2),
+        hide_index=True,
+    )
+
+    st.line_chart(
+        df.set_index("Mois")[
+            [
+                "Courant",
+                "Livret",
+                "Placements",
+                "Patrimoine net",
+            ]
+        ]
+    )
+
+    st.subheader(
+        "6. Rendements et formation du patrimoine"
+    )
+
+    tableau_rendements = pd.DataFrame(
+        [
+            {
+                "Support": nom,
+                "Performance du support sur 12 mois (%)": (
+                    performance
+                ),
+            }
+            for nom, performance in b["performances"].items()
+        ]
+    )
+
+    st.dataframe(
+        tableau_rendements.round(2),
+        hide_index=True,
+    )
+
+    st.caption(
+        "La performance d'un support ne mesure pas "
+        "celle des versements progressifs, "
+        "ni celle du patrimoine total."
+    )
+
+    st.bar_chart(
+        pd.DataFrame(
+            {
+                "Origine": [
+                    "Flux financiers nets",
+                    "Capital remboursé",
+                    "Intérêts livret",
+                    "Gains placements",
+                ],
+                "Montant (€)": [
+                    b["flux"],
+                    b["rembourse"],
+                    b["interets"],
+                    b["gains"],
+                ],
+            }
+        ).set_index("Origine")
+    )
+
+    st.write(
+        "Patrimoine initial "
+        + euros(b["debut"])
+        + " + flux financiers nets "
+        + euros(b["flux"])
+        + " + réduction de dette "
+        + euros(b["rembourse"])
+        + " + intérêts "
+        + euros(b["interets"])
+        + " + gains/pertes "
+        + euros(b["gains"])
+        + " = patrimoine final "
+        + euros(b["fin"])
+        + "."
+    )
+
+    st.write(
+        "Écart de rapprochement comptable : "
+        + euros(b["ecart"])
+        + "."
+    )
+
+    st.subheader(
+        "7. Débrief du conseil"
+    )
+
+    for nom, points in b["criteres"].items():
+        st.write(
+            nom
+            + " : "
+            + str(points)
+            + "/4"
+        )
+
+    st.write(
+        "Note : "
+        + str(b["note"])
+        + "/20. Risque moyen : "
+        + format(
+            b["risque"],
+            ".1f",
+        )
+        + "/10."
+    )
+
+    with st.expander(
+        "Détail des douze mois"
+    ):
+        st.dataframe(
+            df.round(2),
+            hide_index=True,
+        )
+
+        st.write(
+            "Mois avec virements suspendus : "
+            + str(
+                int(
+                    df["Virements suspendus"].sum()
+                )
+            )
+        )
+
+    st.download_button(
+        "Exporter le détail mensuel CSV",
+        df.to_csv(
+            index=False,
+            sep=";",
+            decimal=",",
+        ).encode("utf-8-sig"),
+        file_name=(
+            "annee_"
+            + str(b["annee"])
+            + ".csv"
+        ),
+        mime="text/csv",
+        key=(
+            uid
+            + "_csv_"
+            + str(b["annee"])
+        ),
+    )
+
+
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: #f4f0e6;
+        color: #24372d;
+    }
+    h1, h2, h3 {
+        font-family: Georgia, serif !important;
+        color: #203e30 !important;
+    }
+    [data-testid="stSidebar"] {
+        background: #e4e5d8;
+        border-right: 3px solid #aa8b55;
+    }
+    .stButton > button {
+        background: #244533;
+        color: #fff9e9;
+        border: 1px solid #ad925e;
+        border-radius: 4px;
+    }
+    .stButton > button:hover {
+        background: #623c42;
+        color: white;
+    }
+    [data-testid="stMetric"] {
+        background: #fffcf3;
+        padding: 12px;
+        border-top: 3px solid #a68a53;
+    }
+    .banner {
+        padding: 24px;
+        color: #fff9e8;
+        background-color: #213e30;
+        border: 1px solid #ac915b;
+        background-image:
+            repeating-linear-gradient(
+                90deg,
+                transparent 0px,
+                transparent 37px,
+                #a88a4d33 38px,
+                #a88a4d33 40px
+            ),
+            repeating-linear-gradient(
+                0deg,
+                transparent 0px,
+                transparent 37px,
+                #6c394344 38px,
+                #6c394344 41px
+            );
+        margin-bottom: 20px;
+    }
+    </style>
+
+    <div class="banner">
+        <div style="font:32px Georgia,serif;letter-spacing:2px">
+            OAK &amp; LEDGER
+        </div>
+        <div>
+            Le cabinet patrimonial — Simulation pédagogique
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+with st.expander(
+    "Règles et limites fiscales — à lire"
+):
+    st.write(
+        "Simulation française simplifiée, paramètres figés : "
+        "barème 2026 des revenus 2025 et prélèvements financiers 2026. "
+        "Ce mélange de millésimes est une convention d'exercice, "
+        "pas une déclaration fiscale réelle. "
+        "Aucune prévision des lois futures."
+    )
+
+    st.write(
+        "Revenus disponibles après cotisations mais avant IR, "
+        "distincts du net fiscal. Vous pouvez modifier les deux champs. "
+        "Salaires : déduction de 10 %, minimum 509 €, "
+        "maximum 14 555 € par personne. "
+        "Pensions : minimum 454 € par bénéficiaire, "
+        "plafond familial 4 439 €. "
+        "Thomas : bénéfice au réel déjà net des charges "
+        "professionnelles et cotisations, sans abattement salarial."
+    )
+
+    st.write(
+        "Couples mariés ou pacsés, imposition commune ; "
+        "enfants à charge exclusive, sans parent isolé. "
+        "Calcul par tranches, plafond familial ordinaire "
+        "de 1 807 € par demi-part et décote inclus. "
+        "Ne sont pas gérés : abattement pour âge ou invalidité, "
+        "crédits/réductions, frais réels, hauts revenus, "
+        "IFI et cas internationaux. "
+        "Les résultats restent approximatifs, "
+        "notamment après 65 ans."
+    )
+
+    st.write(
+        "CTO : supports capitalisants, aucun revenu distribué. "
+        "PFU = 12,8 % + 18,6 % = 31,4 %. "
+        "Option globale au barème. "
+        "Pertes reportées dix tours. "
+        "CSG déductible de 6,8 % sur gains CTO au barème, "
+        "reportée au tour suivant. "
+        "Pas de titres anciens bénéficiant d'abattements de durée."
+    )
+
+    st.write(
+        "Assurance-vie : contrat unique en unités de compte "
+        "ouvert dans le jeu, primes récentes, aucun autre contrat. "
+        "Capital de primes non remboursé limité à 150 000 € "
+        "par restriction pédagogique, pas par plafond légal. "
+        "Avant huit ans : IR 12,8 %. "
+        "Après huit ans : IR 7,5 % après abattement "
+        "de 4 600 € ou 9 200 €. "
+        "PS de 17,2 % sur les produits rachetés avant abattement. "
+        "Option barème possible. "
+        "Pas de fonds euros, de CSG déductible AV, "
+        "de contrats anciens ou de succession."
+    )
+
+    st.write(
+        "Impôt annuel calculé sur les revenus simulés "
+        "puis provisionné en douze parts égales : "
+        "ce n'est pas le calendrier réel des acomptes "
+        "ou du prélèvement à la source. "
+        "La naissance modifie le quotient pour le tour entier ; "
+        "les autres évolutions familiales s'appliquent "
+        "au début du tour."
+    )
+
+    st.write(
+        "Livret fictif : 2 %, sans fiscalité ni plafond. "
+        "Crédits à taux zéro : paiement égal au capital remboursé. "
+        "Immobilier à valeur constante, sans achat/vente. "
+        "Protection fictive à 20 ou 40 €/mois : "
+        "couvre 50 % ou 80 % de la perte simulée "
+        "d'arrêt de travail seulement ; "
+        "indemnités non imposables par convention. "
+        "Aucun autre aléa n'est couvert."
+    )
+
+    st.write(
+        "Retraite à l'âge fixé par le scénario, "
+        "revenu ramené à 72 %, sans calcul des droits réels. "
+        "Charges et loyers augmentés de 1,5 % par tour. "
+        "Enfants indépendants à 22 ans par convention. "
+        "Objectifs d'épargne revus à chaque début d'année "
+        "puis figés pour la note. "
+        "Aucun projet immobilier n'est exécuté automatiquement."
+    )
+
+    st.write(
+        "Partie sans limite de tours, avec clôture pédagogique "
+        "du dossier à 90 ans puis choix d'un nouveau client. "
+        "Pas de décès ni de transmission simulés. "
+        "Sauvegardez le JSON : la session du navigateur "
+        "n'est pas une sauvegarde permanente."
+    )
+
+    st.markdown(
+        "Sources de référence : "
+        "[IR]"
+        "(https://www.service-public.gouv.fr/particuliers/vosdroits/F34328), "
+        "[revenus mobiliers]"
+        "(https://www.impots.gouv.fr/particulier/les-revenus-mobiliers), "
+        "[assurance-vie]"
+        "(https://www.impots.gouv.fr/particulier/questions/"
+        "jai-effectue-des-retraits-sur-mon-contrat-dassurance-vie-"
+        "quelles-sont-les)."
+    )
+
+
+if KEY not in st.session_state:
+    st.session_state[KEY] = {
+        "client": None,
+        "archives": [],
+    }
+
+app = st.session_state[KEY]
+s = app["client"]
+
+
+with st.sidebar:
+    st.header(
+        "Le cabinet"
+    )
+
+    st.write(
+        "Dossiers archivés : "
+        + str(
+            len(
+                app["archives"]
+            )
+        )
+    )
+
+    fichier = st.file_uploader(
+        "Restaurer une sauvegarde JSON",
+        type="json",
+    )
+
+    if fichier is not None:
+        if st.button(
+            "Charger la sauvegarde"
+        ):
+            try:
+                charge = json.load(
+                    fichier
+                )
+
+                if (
+                    charge.get("format") != KEY
+                    or not isinstance(
+                        charge.get("partie"),
+                        dict,
+                    )
+                ):
+                    raise ValueError(
+                        "Sauvegarde incompatible."
+                    )
+
+                if (
+                    "client" not in charge["partie"]
+                    or "archives" not in charge["partie"]
+                ):
+                    raise ValueError(
+                        "Sauvegarde incomplète."
+                    )
+
+                st.session_state[KEY] = (
+                    charge["partie"]
+                )
+
+                st.rerun()
+
+            except (
+                ValueError,
+                KeyError,
+                TypeError,
+            ) as erreur:
+                st.error(
+                    str(erreur)
+                )
+
+    sauvegarde = {
+        "format": KEY,
+        "partie": app,
+    }
+
+    st.download_button(
+        "Sauvegarder la partie",
+        json.dumps(
+            sauvegarde,
+            ensure_ascii=False,
+        ).encode("utf-8"),
+        file_name="sauvegarde_cabinet.json",
+        mime="application/json",
+    )
+
+    if s is not None:
+        st.write(
+            s["profil"]
+        )
+
+        for p in s["personnes"]:
+            st.write(
+                p["nom"]
+                + " : "
+                + str(p["age"])
+                + " ans — "
+                + p["statut"]
+            )
+
+        texte_enfants = (
+            ", ".join(
+                str(age) + " ans"
+                for age in s["enfants"]
+            )
+            or "aucun"
+        )
+
+        st.write(
+            "Enfants à charge : "
+            + texte_enfants
+        )
+
+        if st.button(
+            "Archiver et choisir un autre client"
+        ):
+            app["archives"].append(
+                copy.deepcopy(s)
+            )
+
+            app["client"] = None
+
+            st.rerun()
+
+
+if s is None:
+    st.header(
+        "Choisir un nouveau client"
+    )
+
+    noms = list(PROFILS)
+
+    if "selection_oak_v2" not in st.session_state:
+        st.session_state.selection_oak_v2 = (
+            noms[0]
+        )
+
+    if st.button(
+        "Tirer un profil au hasard"
+    ):
+        st.session_state.selection_oak_v2 = (
+            random.choice(noms)
+        )
+
+    nom = st.selectbox(
+        "Profil",
+        noms,
+        key="selection_oak_v2",
+    )
+
+    candidat = nouveau(nom)
+
+    for p in candidat["personnes"]:
+        st.write(
+            p["nom"]
+            + " — "
+            + str(p["age"])
+            + " ans — "
+            + euros(p["revenu"])
+            + "/mois avant IR."
+        )
+
+    st.write(
+        "Charges : "
+        + euros(candidat["charges"])
+        + " ; loyer : "
+        + euros(candidat["loyer"])
+        + " ; crédit : "
+        + euros(candidat["credit"])
+        + " par mois."
+    )
+
+    st.write(
+        "Livret : "
+        + euros(candidat["livret"])
+        + " ; placements : "
+        + euros(
+            placements(candidat)
+        )
+        + " ; dette : "
+        + euros(candidat["dette"])
+        + "."
+    )
+
+    st.write(
+        "Besoin : "
+        + candidat["besoin"]
+        + ". Patrimoine net : "
+        + euros(
+            patrimoine(candidat)
+        )
+        + "."
+    )
+
+    if st.button(
+        "Ouvrir ce dossier",
+        type="primary",
+    ):
+        app["client"] = candidat
+
+        st.rerun()
+
+    st.stop()
+
+
+st.header(
+    s["profil"]
+    + " — Année "
+    + str(s["annee"])
+)
+
+indicateurs = [
+    (
+        "Compte courant",
+        s["courant"],
+    ),
+    (
+        "Livret",
+        s["livret"],
+    ),
+    (
+        "Placements",
+        placements(s),
+    ),
+    (
+        "Patrimoine net",
+        patrimoine(s),
+    ),
+]
+
+for colonne, (nom, montant) in zip(
+    st.columns(4),
+    indicateurs,
+):
+    colonne.metric(
+        nom,
+        euros(montant),
+    )
+
+
+if s["phase"] == "decisions":
+    st.subheader(
+        "Situation et besoins de début d'année"
+    )
+
+    for texte in s["preparation"]:
+        st.info(texte)
+
+    st.write(
+        s["besoin"]
+    )
+
+    st.write(
+        "Réserve cible : "
+        + euros(s["reserve_cible"])
+        + ". Épargne de projet sur livret, réserve incluse : "
+        + euros(s["projet_cible"])
+        + ". Risque maximal : "
+        + str(s["risque_max"])
+        + "/10."
+    )
+
+    st.subheader(
+        "1. Revenus avant impôt"
+    )
+
+    revenus = []
+    fiscaux = []
+
+    for index, p in enumerate(
+        s["personnes"]
+    ):
+        colonne_a, colonne_b = (
+            st.columns(2)
+        )
+
+        cle_personne = (
+            s["uid"]
+            + "_"
+            + str(s["annee"])
+            + "_"
+            + str(index)
+        )
+
+        revenus.append(
+            colonne_a.number_input(
+                p["nom"]
+                + " : disponible mensuel avant IR (€)",
+                min_value=0.0,
+                value=float(
+                    p["revenu"]
+                ),
+                step=50.0,
+                key=(
+                    cle_personne
+                    + "_revenu"
+                ),
+            )
+        )
+
+        fiscaux.append(
+            colonne_b.number_input(
+                p["nom"]
+                + " : revenu fiscal mensuel avant déduction (€)",
+                min_value=0.0,
+                value=float(
+                    p["fiscal"]
+                ),
+                step=50.0,
+                key=(
+                    cle_personne
+                    + "_fiscal"
+                ),
+            )
+        )
+
+    st.caption(
+        "Ce ne sont pas des salaires bruts. "
+        "Pour Thomas, les charges professionnelles "
+        "et cotisations sont déjà déduites du bénéfice réel."
+    )
+
+    reg = copy.deepcopy(
+        s["reglages"]
+    )
+
+    cle = (
+        s["uid"]
+        + "_"
+        + str(s["annee"])
+    )
+
+    st.subheader(
+        "2. Protection et versements mensuels"
+    )
+
+    reg["protection"] = st.selectbox(
+        "Protection fictive — cotisation mensuelle (€)",
+        [0, 20, 40],
+        index=[0, 20, 40].index(
+            reg["protection"]
+        ),
+        key=(
+            cle
+            + "_protection"
+        ),
+    )
+
+    st.caption(
+        "20 € couvre 50 % et 40 € couvre 80 % "
+        "de la perte simulée d'arrêt de travail. "
+        "Aucun effet sur les dépenses de santé, "
+        "travaux ou baisse d'activité."
+    )
+
+    reg["livret"] = st.number_input(
+        "Livret — versement par mois (€)",
+        min_value=0.0,
+        value=float(
+            reg["livret"]
+        ),
+        step=10.0,
+        key=(
+            cle
+            + "_livret"
+        ),
+    )
+
+    for enveloppe in [
+        "CTO",
+        "AV",
+    ]:
+        nom_enveloppe = (
+            "Assurance-vie"
+            if enveloppe == "AV"
+            else "Compte-titres"
+        )
+
+        with st.expander(
+            "Versements mensuels — "
+            + nom_enveloppe
+        ):
+            for support in SUPPORTS:
+                cle_versement = (
+                    enveloppe
+                    + " | "
+                    + support
+                )
+
+                reg["versements"][cle_versement] = (
+                    st.number_input(
+                        support
+                        + " (€/mois)",
+                        min_value=0.0,
+                        value=float(
+                            reg["versements"][
+                                cle_versement
+                            ]
+                        ),
+                        step=10.0,
+                        key=(
+                            cle
+                            + "_"
+                            + cle_versement
+                        ),
+                    )
+                )
+
+    st.subheader(
+        "3. Retraits et choix fiscal"
+    )
+
+    retrait = st.number_input(
+        "Transfert immédiat du livret vers le courant (€)",
+        min_value=0.0,
+        max_value=float(
+            s["livret"]
+        ),
+        value=0.0,
+        step=100.0,
+        key=(
+            cle
+            + "_retrait"
+        ),
+    )
+
+    cto = st.slider(
+        "Part de chaque ligne CTO à vendre (%)",
+        0,
+        100,
+        0,
+        10,
+        key=(
+            cle
+            + "_cto"
+        ),
+    )
+
+    av = st.slider(
+        "Part du contrat assurance-vie à racheter (%)",
+        0,
+        100,
+        0,
+        10,
+        key=(
+            cle
+            + "_av"
+        ),
+    )
+
+    reg["option"] = st.radio(
+        "Option globale sur les revenus financiers concernés",
+        [
+            "Forfait",
+            "Barème global",
+        ],
+        index=(
+            0
+            if reg["option"] == "Forfait"
+            else 1
+        ),
+        key=(
+            cle
+            + "_option"
+        ),
+    )
+
+    prevision = copy.deepcopy(s)
+
+    for index, p in enumerate(
+        prevision["personnes"]
+    ):
+        p["revenu"] = (
+            revenus[index]
+        )
+
+        p["fiscal"] = (
+            fiscaux[index]
+        )
+
+    estimation = fiscalite(
+        prevision,
+        [
+            montant * 12
+            for montant in fiscaux
+        ],
+        0.0,
+        0.0,
+        reg["option"],
+    )
+
+    capacite = (
+        sum(revenus)
+        - depenses_fixes(s)
+        - reg["protection"]
+        - estimation["total"] / 12
+    )
+
+    programme = (
+        reg["livret"]
+        + sum(
+            reg["versements"].values()
+        )
+    )
+
+    st.write(
+        "Capacité mensuelle après IR et protection, "
+        "hors ventes et événements : "
+        + euros(capacite)
+        + ". Virements programmés : "
+        + euros(programme)
+        + ". Reste : "
+        + euros(
+            capacite - programme
+        )
+        + "."
+    )
+
+    st.info(
+        "Les virements sont exécutés chaque mois "
+        "après les revenus et dépenses, "
+        "jamais douze fois d'un coup. "
+        "S'il manque de trésorerie, "
+        "le programme du mois est suspendu. "
+        "Un retrait de secours sur le livret est tenté "
+        "si le courant est négatif. "
+        "Les montants programmés seront repris "
+        "l'année suivante."
+    )
+
+    st.divider()
+
+    if st.button(
+        "Valider les décisions et simuler l'année",
+        type="primary",
+    ):
+        av_prevu = (
+            s["av_capital"]
+            * (
+                1 - av / 100
+            )
+            + 12 * sum(
+                montant
+                for cle_versement, montant
+                in reg["versements"].items()
+                if cle_versement.startswith(
+                    "AV | "
+                )
+            )
+        )
+
+        if av_prevu > 150000.0 + 0.001:
+            st.error(
+                "Le plafond pédagogique de primes AV "
+                "de 150 000 € serait dépassé. "
+                "Réduisez les versements."
+            )
+
+        else:
+            app["client"] = simuler(
+                prevision,
+                reg,
+                cto,
+                av,
+                retrait,
+            )
+
+            st.rerun()
+
+
+else:
+    bilan = (
+        s["bilans"][-1]
+    )
+
+    st.header(
+        "Débrief de l'année "
+        + str(
+            bilan["annee"]
+        )
+    )
+
+    texte_ages = ", ".join(
+        nom
+        + " "
+        + str(age)
+        + " → "
+        + str(age + 1)
+        + " ans"
+        for nom, age in zip(
+            bilan["noms"],
+            bilan["ages"],
+        )
+    )
+
+    st.write(
+        "Âges : "
+        + texte_ages
+    )
+
+    afficher_bilan(
+        bilan,
+        s["uid"],
+    )
+
+    with st.expander(
+        "Historique du dossier"
+    ):
+        historique = pd.DataFrame(
+            [
+                {
+                    "Année": b["annee"],
+                    "Patrimoine net": b["fin"],
+                    "Impôt annuel": (
+                        b["fiscal"]["total"]
+                    ),
+                    "Note /20": b["note"],
+                }
+                for b in s["bilans"]
+            ]
+        )
+
+        st.dataframe(
+            historique.round(2),
+            hide_index=True,
+        )
+
+        evolution = [
+            {
+                "Année": 0,
+                "Patrimoine net": (
+                    s["bilans"][0]["debut"]
+                ),
+            }
+        ] + [
+            {
+                "Année": b["annee"],
+                "Patrimoine net": b["fin"],
+            }
+            for b in s["bilans"]
+        ]
+
+        st.line_chart(
+            pd.DataFrame(
+                evolution
+            ).set_index("Année")
+        )
+
+        if len(s["bilans"]) > 1:
+            annee_consultee = st.selectbox(
+                "Consulter un ancien bilan",
+                [
+                    b["annee"]
+                    for b in s["bilans"][:-1]
+                ],
+            )
+
+            ancien_bilan = next(
+                b
+                for b in s["bilans"]
+                if b["annee"] == annee_consultee
+            )
+
+            afficher_bilan(
+                ancien_bilan,
+                s["uid"],
+            )
+
+    st.divider()
+
+    st.subheader(
+        "Fin du débrief"
+    )
+
+    st.caption(
+        "L'année suivante ne démarre qu'après votre clic. "
+        "Recharger la page ne relance pas "
+        "les événements de cette année."
+    )
+
+    if st.button(
+        "Passer à l'année suivante",
+        type="primary",
+    ):
+        for p in s["personnes"]:
+            p["age"] += 1
+
+        s["enfants"] = [
+            age + 1
+            for age in s["enfants"]
+        ]
+
+        age_maximum = max(
+            p["age"]
+            for p in s["personnes"]
+        )
+
+        if age_maximum >= 90:
+            app["archives"].append(
+                copy.deepcopy(s)
+            )
+
+            app["client"] = None
+
+        else:
+            s["annee"] += 1
+            s["phase"] = "decisions"
+
+            app["client"] = preparer(s)
+
+        st.rerun()
